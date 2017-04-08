@@ -37,15 +37,15 @@ namespace Geolocation
 
             double radius = GetRadius(distanceUnit);
             return Math.Round(
-                    radius * 2 *
-                    Math.Asin(Math.Min(1,
-                                       Math.Sqrt(
-                                           (Math.Pow(Math.Sin(originLatitude.DiffRadian(destinationLatitude) / 2.0), 2.0) +
-                                            Math.Cos(originLatitude.ToRadian()) * Math.Cos(destinationLatitude.ToRadian()) *
-                                            Math.Pow(Math.Sin((originLongitude.DiffRadian(destinationLongitude)) / 2.0),
-                                                     2.0))))), decimalPlaces);
+                            radius * 2 *
+                            Math.Asin(Math.Min(1,
+                                                                 Math.Sqrt(
+                                                                         (Math.Pow(Math.Sin(originLatitude.DiffRadian(destinationLatitude) / 2.0), 2.0) +
+                                                                            Math.Cos(originLatitude.ToRadian()) * Math.Cos(destinationLatitude.ToRadian()) *
+                                                                            Math.Pow(Math.Sin((originLongitude.DiffRadian(destinationLongitude)) / 2.0),
+                                                                                             2.0))))), decimalPlaces);
         }
-        
+
         /// <summary>
         /// Calculate the distance between two sets of <see cref="Coordinate"/> objects
         /// </summary>
@@ -57,7 +57,7 @@ namespace Geolocation
         public static Double GetDistance(Coordinate originCoordinate, Coordinate destinationCoordinate, int decimalPlaces = 1, DistanceUnit distanceUnit = DistanceUnit.Miles)
         {
             return GetDistance(originCoordinate.Latitude, originCoordinate.Longitude, destinationCoordinate.Latitude,
-                destinationCoordinate.Longitude, decimalPlaces, distanceUnit);
+                    destinationCoordinate.Longitude, decimalPlaces, distanceUnit);
         }
 
         /// <summary>
@@ -80,8 +80,8 @@ namespace Geolocation
 
             if (Math.Abs(destinationRadian) > Math.PI)
                 destinationRadian = destinationRadian > 0
-                                        ? -(2 * Math.PI - destinationRadian)
-                                        : (2 * Math.PI + destinationRadian);
+                                                                ? -(2 * Math.PI - destinationRadian)
+                                                                : (2 * Math.PI + destinationRadian);
 
             return Math.Atan2(destinationRadian, destinationPhi).ToBearing();
         }
@@ -95,7 +95,7 @@ namespace Geolocation
         public static double GetBearing(Coordinate originCoordinate, Coordinate destinationCoordinate)
         {
             return GetBearing(originCoordinate.Latitude, originCoordinate.Longitude, destinationCoordinate.Latitude,
-                              destinationCoordinate.Longitude);
+                                                destinationCoordinate.Longitude);
         }
 
         /// <summary>
@@ -136,7 +136,7 @@ namespace Geolocation
         public static string GetDirection(Coordinate originCoordinate, Coordinate destinationCoordinate)
         {
             return GetDirection(originCoordinate.Latitude, originCoordinate.Longitude, destinationCoordinate.Latitude,
-                                destinationCoordinate.Longitude);
+                                                    destinationCoordinate.Longitude);
         }
 
         private static double GetRadius(DistanceUnit distanceUnit)
@@ -149,9 +149,39 @@ namespace Geolocation
                     return EarthRadiusInMeters;
                 case DistanceUnit.NauticalMiles:
                     return EarthRadiusInNauticalMiles;
-                default:
+                case DistanceUnit.Miles:
                     return EarthRadiusInMiles;
+                default:
+                    throw new NotSupportedException($"Radius in {distanceUnit} is not supported.");
             }
+        }
+
+        public static Coordinate FindPointAtDistanceFrom(Coordinate originCoordinate, double initialBearingRadians, double distanceKilometres)
+        {
+            var distRatio = distanceKilometres / EarthRadiusInKilometers;
+
+            var distRatioSine = Math.Sin(distRatio);
+            var distRatioCosine = Math.Cos(distRatio);
+
+            var startLatRad = originCoordinate.Latitude.ToRadian();
+            var startLonRad = originCoordinate.Longitude.ToRadian();
+
+            var startLatCos = Math.Cos(startLatRad);
+            var startLatSin = Math.Sin(startLatRad);
+
+            var endLatRads = Math.Asin(startLatSin * distRatioCosine
+                + startLatCos * distRatioSine * Math.Cos(initialBearingRadians));
+
+            var endLonRads = startLonRad
+                             + Math.Atan2(
+                                 Math.Sin(initialBearingRadians) * distRatioSine * startLatCos,
+                                 distRatioCosine - startLatSin * Math.Sin(endLatRads));
+
+            return new Coordinate
+            {
+                Latitude = endLatRads.ToDegrees(),
+                Longitude = endLonRads.ToDegrees()
+            };
         }
     }
 }
